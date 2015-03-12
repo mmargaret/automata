@@ -240,7 +240,7 @@ var LogView = React.createClass({
         return (
                 <div className="status_window">
                 <StatusHeader tabName="log" toolBar={this.toolBar} />
-                <div id={"summury-"+this.props.report+"_status_view"} className="status_view">
+                <div id={"status_view"} className="status_view">
                 <dl class="log_msg">
                 <Log data={status} />
                 {logedit}
