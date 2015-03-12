@@ -20,13 +20,15 @@
 #   - pathがテキストファイルを指すとき:
 #     - type=rawならそのファイルそのもの(text/**)
 #     - type=highlightならハイライトしたHTML(text/html)
-#   - pathがバイナリファイルを指すとき: 生ファイル(適切なMIMEタイプ)
+#   - pathがバイナリファイルを指すとき: 
+#     - 拡張子が.classならapplet表示用HTML(text/html)
+#     - その他なら生ファイル(適切なMIMEタイプ)
 
 require 'shellwords'
 require 'time'
+require 'shared-mime-info'
 require_relative '../../lib/app'
 require_relative '../../lib/log'
-require_relative '../../lib/mime_extension'
 require_relative '../../lib/cgi_helper'
 
 helper = CGIHelper.new
@@ -59,13 +61,22 @@ path = path.realpath rescue nil
 helper.exit_with_forbidden unless src && path
 helper.exit_with_forbidden unless path.to_s.index(src.to_s)==0 # dir traversal
 
+applet_code = File.basename(path.to_s,".*")
+relpath = path.parent.relative_path_from(src)
+applet_codebase = "../browse/#{User.make_token(user)}/#{report_id}/#{relpath}"
+jar_path = src.relative_path_from(path) + Pathname("../../jar/")
+libs = app.conf[:master, :check, :default, :applet, :java_library]
+applet_archive = libs.map{|item| jar_path + item}.join(",")
+applet_width = app.conf[:master, :check, :default, :applet, :width]
+applet_height = app.conf[:master, :check, :default, :applet, :height]
+
 if path.directory?
   Dir.chdir(path.to_s) do
     files = path.entries.reject{|f| f.to_s =~ /^\.+$/}.sort do |a,b|
       "#{a.directory? ? 0 : 1}#{a.to_s}" <=> "#{b.directory? ? 0 : 1}#{b.to_s}"
     end.map do |f|
       { 'name' => f.to_s,
-        'type' => f.directory? ? 'dir' : (f.mime.type=='text' ? 'txt' : 'bin'),
+        'type' => f.directory? ? 'dir' : (MIME.check(f.to_s).media_type=='text' ? 'txt' : 'bin'),
         'size' => f.size,
         'time' => f.mtime.iso8601,
       }
@@ -73,7 +84,7 @@ if path.directory?
     print(helper.header)
     puts(helper.json(files))
   end
-elsif path.mime.type == 'text' && 'highlight' == helper.params['type'][0]
+elsif MIME.check(path.to_s).media_type == 'text' && 'highlight' == helper.params['type'][0]
   dir = File.join(File.dirname(File.expand_path($0)), '../../script/vim')
   vimcmd =
     [ 'vim -e -s',
@@ -85,8 +96,30 @@ elsif path.mime.type == 'text' && 'highlight' == helper.params['type'][0]
     print(helper.cgi.header('type' => 'text/html', 'status' => 'OK'))
     print(`#{vimcmd} #{Shellwords.escape(path.to_s)}`)
   end
+elsif '.class' == path.extname && 'highlight' == helper.params['type'][0] 
+  # return html including applet tag when .class file is selected
+  print(helper.cgi.header('type' => 'text/html', 'status' => 'OK'))
+  applet_html = <<"APPLET"
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <body>
+	<pre>
+      <applet code="#{applet_code}"
+			  codebase="#{applet_codebase}"
+			  archive="#{applet_archive}"
+			  width="#{applet_width}"
+			  height="#{applet_height}"
+			  >
+        Note: This demo requires a Java enabled browser.  If you see this message then your browser either doesn't support Java or has had Java disabled.
+	  </applet>
+    </pre>
+  </body>
+</html>
+APPLET
+  print applet_html
 else
-  args = { 'type' => path.mime.to_s, 'length' => path.size, 'status' => 'OK' }
+  args = { 'type' => MIME.check(path.to_s).to_s, 'length' => path.size, 'status' => 'OK' }
   print(helper.cgi.header(args))
   File.open(path.to_s, 'rb') {|f| print(f.read) }
 end
