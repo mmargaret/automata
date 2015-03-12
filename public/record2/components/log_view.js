@@ -17,8 +17,8 @@ var Log = React.createClass({
             function (def) {
                 return (
                         <div>
-                        <dt class={def.prop}>{def.label}</dt>
-                        <dd class={def.prop}>{rawData[def.prop]}</dd>
+                        <dt className={def.prop}>{def.label}</dt>
+                        <dd className={def.prop}>{rawData[def.prop]}</dd>
                         </div>
                 );
             });
@@ -28,9 +28,11 @@ var Log = React.createClass({
 
 var LogMessages = React.createClass({
     render: function (){
-        var id = function (x){return x;};
+        var id = function (x){
+            return x;
+        };
         var defs = [
-            // {message: "...", reason: ""}
+            // {message: '...', reason: ''}
             { prop: 'message',
               label:'メッセージ',
               proc: id },
@@ -52,22 +54,22 @@ var LogMessages = React.createClass({
             }
         ];
         var rawLog = this.props.log;
-        if (rawLog == undefined){
-            var message = (<div></div>);
-        } else {
+        if (rawLog){
         var messages = defs.map(
             function (def){
-                if (rawLog[def.prop] == undefined) {
-                    return (<div></div>);
-                } else {
+                if (rawLog[def.prop] && rawLog[def.prop].trim()) {
                     return (
                             <div className={def.prop}>
-                            <dt class={def.prop}>{def.label}</dt>
-                            <dd class={def.prop}>{def.proc(rawLog[def.prop])}</dd>
+                            <dt className={def.prop}>{def.label}</dt>
+                            <dd className={def.prop}>{def.proc(rawLog[def.prop])}</dd>
                             </div>
                     );
+                } else {
+                    return (<div></div>);
                 };
             });
+        } else {
+            var message = (<div></div>);
         };
         return (<div>{messages}</div>);
     }
@@ -76,36 +78,39 @@ var LogMessages = React.createClass({
 var LogEdit = React.createClass ({
     getInitialState: function (){
         return {
-            message:  this.props.data.message,
-            error:  this.props.data.error,
+            report: this.props.rep,
+            user: this.props.token,
+            id: this.props.id,
+            message: this.props.data.message,
+            error: this.props.data.error,
             reason: this.props.data.reason
         };
     },
 
     handleSubmit: function (e){
         $.post('../api/admin_log.cgi',
-               { report: this.props.rep,
-                 user: this.props.token,
-                 id: this.props.id,
-                 message: this.state.message,
-                 error: this.state.error ,
-                 reason: this.state.reason },
+               this.state,
                function (d) {return;},
                function(xhr, status, err) {
                    console.error(status, err.toString());
                }.bind(this));
         this.props.exit();
-        return;
     },
 
     handleChangeM: function (e) {
-        this.setState({message: e.target.value});
+        this.setState({
+            message: e.target.value,
+                      });
     },
     handleChangeE: function (e) {
-        this.setState({error: e.target.value});
+        this.setState({
+            error: e.target.value,
+        });
     },
     handleChangeR: function (e) {
-        this.setState({reason: e.target.value});
+        this.setState({
+            reason: e.target.value,
+        });
     },
     
     render: function (){
@@ -113,7 +118,7 @@ var LogEdit = React.createClass ({
             // {build: 'OK'}
             { prop: 'build',
               label: 'build',
-              proc: function(x){return x;}
+              proc: function(x){if (x!='') {return x;};}
             },
             // {test: {passed: 0, number: 0}}
             { prop: 'test',
@@ -122,39 +127,39 @@ var LogEdit = React.createClass ({
                   return (l.passed +'/'+ l.number);}
             }];
         var rawLog = this.props.data;
-        if (rawLog == undefined) {
-            var test = (<div></div>);
-        } else {
+        if (rawLog) {
             var test = defs.map(
                 function (def) {
-                    if (rawLog[def.prop] == undefined ) {
-                         return (<div></div>);
-                    } else {
+                    if (rawLog[def.prop]) {
                         return (
                                 <div>
-                                <dt class={def.prop}>{def.label}</dt>
-                                <dd class={def.prop}>{def.proc(rawLog[def.prop])}</dd>
+                                <dt className={def.prop}>{def.label}</dt>
+                                <dd className={def.prop}>{def.proc(rawLog[def.prop])}</dd>
                                 </div>);
+                    } else {
+                        return (<div></div>);
                     };
                 });
+        } else {
+            var test = (<div></div>);
         };
         return (
-                <div className="form">
-                <dt class="message">メッセージ</dt>
-                <dd class="message">
-                <textarea rows="2" cols="80" onChange={this.handleChangeM} defaultValue={this.props.data.message} />
+                <div className='form'>
+                <dt className='message'>メッセージ</dt>
+                <dd className='message'>
+                <textarea rows='2' cols='80' onChange={this.handleChangeM} defaultValue={this.props.data.message} />
                 </dd>
-                <dt class="error">エラー</dt>
-                <dd class="error">
-                <textarea rows="2" cols="80" onChange={this.handleChangeE} defaultValue={this.props.data.error} />
+                <dt className='error'>エラー</dt>
+                <dd className='error'>
+                <textarea rows='2' cols='80' onChange={this.handleChangeE} defaultValue={this.props.data.error} />
                 </dd>
-                <dt class="reason">エラーの詳細</dt>
-                <dd class="reason">
-                <textarea rows="2" cols="80" onChange={this.handleChangeR} defaultValue={this.props.data.reason} />
+                <dt className='reason'>エラーの詳細</dt>
+                <dd className='reason'>
+                <textarea rows='2' cols='80' onChange={this.handleChangeR} defaultValue={this.props.data.reason} />
                 </dd>
                 {test}
-                <input type="submit" onClick={this.handleSubmit} value="変更" />
-                <input type="button" onClick={this.props.exit} value="キャンセル" />
+                <input type='submit' onClick={this.handleSubmit} value='変更' />
+                <input type='button' onClick={this.props.exit} value='キャンセル' />
                 </div>
         );
     }
@@ -188,6 +193,7 @@ var LogView = React.createClass({
         this.setState(
             {onEdit: true});
     },
+
     exit: function () {    
         this.setState(
             {onEdit: !this.state.onEdit}
@@ -205,43 +211,36 @@ var LogView = React.createClass({
                       data: (result[0].report[this.props.report])
                   });
               }.bind(this));
-
     },
     
     toolBar: function () {
-//        if (!this.props.admin) { return (<div></div>);}
+        if (!this.props.admin) { return (<div></div>);}
         if (this.state.onEdit) {
             return (
-                    <ul className="status_toolbar">
-                    <li className="toolbutton"><a onClick={this.click}>編集中</a></li>
+                    <ul className='status_toolbar'>
+                    <li className='toolbutton'>編集中</li>
                     </ul>
             );
         } else {
             return (
-                    <ul className="status_toolbar">
-                    <li className="toolbutton"><a onClick={this.onEdit}>✏ 編集</a></li>
+                    <ul className='status_toolbar'>
+                    <li className='toolbutton'><a onClick={this.onEdit}>✏ 編集</a></li>
                     </ul>
             );
         };
     },
     
     render: function() {
-        var status = {status:'check',
-                timestamp:'2015-02-20T17:16:50+09:00',
-                submit:'2015-02-20T17:16:50+09:00',
-                initial_submit:'2015-02-20T17:16:50+09:00',
-                log:{build:'OK'},
-                unsolved:[],
-                      optional:['hoge']};
-        var status2 = this.state.data; 
+        var status = this.state.data; 
         if (this.state.onEdit) {
             var logedit = (<LogEdit id={this.state.data.submit} rep={this.props.report} data={this.state.data.log} token={this.props.token} exit={this.exit}/>);
-        } else { var logedit = (<LogMessages log={this.state.data.log}/>); };
+        } else {
+            var logedit = (<LogMessages log={this.state.data.log}/>); };
         return (
-                <div className="status_window">
-                <StatusHeader tabName="log" toolBar={this.toolBar} />
-                <div id={"status_view"} className="status_view">
-                <dl class="log_msg">
+                <div className='status_window'>
+                <StatusHeader tabName='log' toolBar={this.toolBar} />
+                <div id={'status_view'} className='status_view'>
+                <dl className='log_msg'>
                 <Log data={status} />
                 {logedit}
                 </dl>
