@@ -4,7 +4,7 @@ require 'bundler/setup'
 require 'mail'
 
 require_relative 'app'
-require_relative 'cgi_helper'
+require_relative 'helper'
 require_relative 'string/random'
 
 class App
@@ -26,11 +26,15 @@ class App
     }
 
     this = self
-    Mail.deliver do
+
+    mail = Mail.new do
       from    this.conf[:master, :authn, :admin]
       to      email
       subject this.conf[:template, tmpl, :subject].gsub(/%\{([a-z]+)\}/) { data[$1.to_sym] }
       body    this.conf[:template, tmpl, :body].gsub(/%\{([a-z]+)\}/) { data[$1.to_sym] }
     end
+
+    mail.charset = 'utf-8'
+    mail.deliver
   end
 end
